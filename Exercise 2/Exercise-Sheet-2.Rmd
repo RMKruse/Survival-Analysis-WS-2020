@@ -1,13 +1,13 @@
 ---
 site: bookdown::bookdown_site
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   bookdown::pdf_book:
     keep_tex: yes
   bookdown::gitbook:
     lib_dir: book_assets
-  html_document:
-    df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -192,6 +192,124 @@ lines(km$time,breslow,type="s", lty = 2, col="red")
 legend("bottomright",c("Breslow","Nelson-Aalen"),lty=1,col=c("black","red"))
 
 ```
+
+
+# Exercise 2
+
+_Let T be a non-negative continuous random variable denoting the time until the event of
+interest. Show that the mean survival time, $\mu = E(T)$, is_ 
+
+$$ \mu = \int_{0}^{\infty} S(t) dt.$$ 
+
+
+
+Given that:
+$$ \mu = E[T] = \int_{-\infty}^{\infty} t \cdot f_{T}(t) dt = \int_{0}^{\infty} t \cdot f_{T}(t) dt $$
+And knowing that time can be denoted as:
+$$ t = \int_{0}^{t} dx $$
+
+We now can, for any $y > 0$, see that:
+\begin{equation} 
+    \begin{aligned} 
+      \int_{t = 0}^{t = n} t \cdot f_{T}(t) dt &= \int_{t = 0}^{t = n}  ( \int_{x = 0}^{x = t} ) f_{T}(t) dt \\
+                                               &= \int_{t = 0}^{t = n}  \int_{x = 0}^{x = t} f_{T}(t) \cdot dx \cdot dt \\
+                                               &= \int_{x = 0}^{x = n}  \int_{t = x}^{t = n}  f_{T}(t) \cdot dt \cdot dx \\
+                                               &= \int_{x = 0}^{x = n} ( F_{T}(n) - F_{T}(x)  ) dx 
+    \end{aligned}
+\end{equation} 
+
+Now assuming that $n \rightarrow \infty$; and furthermore $F_{T}(n) = 1$, we can show that:
+$$ E[T] = \int_{0}^{\infty} (1 - F_{T}(x)) dx = \int_{0}^{\infty} f_{T}(x) dx   $$ 
+and therefore we can say that:
+$$ \mu = \int_{0}^{\infty} S(t) dt$$
+is true.
+
+
+_Given the Kaplan-Meier estimator $\hat{S}_{KM}(t)$ for $S(t)$, use (1) to think of a suitable estimator
+$\hat{\mu}$ for ${\mu}$. You may use your proposed estimator to estimate the mean survival time for the
+6-MP patients in exercise 1._
+
+\begin{equation} 
+    \begin{aligned} 
+      \hat{\mu} &= \int_{0}^{\infty} S(t) dt \\
+                &= \int_{0}^{\infty} \hat{S}_{KM}(t) dt\\
+                &= \sum_{K} \hat{S}_{KM}(t_{k - 1}) \cdot (t_{k} - t_{k - 1}) \\
+                &= 1 \cdot 6 + 0.851 \cdot (7 - 6) + 0.807 \cdot (10-7) + 0.753 \cdot (13 - 10) \\
+                & + 0.670 \cdot (16 - 13) + 0.627 \cdot (22 - 16) + 0.537 \cdot (23 - 22) + 0.448 \cdot (35 - 23) \\
+                &= 23.216
+    \end{aligned}
+\end{equation} 
+
+23.2 weeks are estimated. Or in full weeks, 24 weeks.
+
+# Exercise 3:
+_It follows from the definition of the hazard rate of a continuous random variable $T$ that
+$$ P(t ≤ T < t + ∆t | j T ≥ t) = h(t) \Delta t + o(\Delta t), $$
+where $∆t$ is a small time interval and $o(∆t)=∆t$ ! 0 as $∆t$ ! 0. Hence, for small $∆t$,
+$$ P(t ≤ T < t + ∆t | j T ≥ t) ≈ h(t)∆t =: P_1 :$$
+Compare the probability $P(t ≤ T < t + ∆t | j T ≥ t) =: P_2$ with its approximation $P_1$, by
+giving an expression for its difference $δ = P_1 − P_2$, in the following two cases:_
+
+## (a)
+_For: $T \sim \mathcal{E}(\lambda)$_
+We do know that the Exponential distribution is a special case of the Weibull at $\mathcal{WB}(\alpha = 1, \lambda).$
+For $P_{1}$ we simply know that:
+$$ P_{1} = h(t) \cdot \Delta t = \lambda \cdot \Delta t.$$
+
+For $P_{2}$ we can show that:
+\begin{equation} 
+    \begin{aligned} 
+      P_{2} =& 1 - \dfrac{exp \{ -\lambda (t + \Delta t)\} }{ exp \{ -\lambda t\} } \\
+             & 1 - \dfrac{exp \{ -\lambda \cdot t - \lambda \cdot \Delta t)\} }{ exp \{ -\lambda t\} } \\
+             & 1 - exp \{ -\lambda \Delta t \} 
+    \end{aligned}
+\end{equation} 
+
+## (b)
+_For $T \sim \mathcal{WB}(\alpha , \lambda)$, with $\alpha = 2$._
+
+We do know that for a $\alpha = 2$ the Weibull distribution takes on the form of an Rayleigh distribution.
+
+For $P_{1} = h(t) \cdot \Delta t = \lambda \cdot \alpha (\lambda \cdot t)^{\alpha - 1} \cdot \Delta t$
+
+\begin{equation} 
+    \begin{aligned} 
+      P_{1} = h(t) \cdot \Delta t =& \lambda \cdot \alpha (\lambda \cdot t)^{\alpha - 1} \cdot \Delta t \\
+             & 2 \cdot \lambda \cdot \lambda \cdot t \cdot \Delta t \\
+             & 2 \lambda^{2} \cdot t \cdot \Delta t
+    \end{aligned}
+\end{equation} 
+
+
+For $P_{2}$:
+\begin{equation} 
+    \begin{aligned} 
+      P_{2} =& 1 - \dfrac{exp \{ - (\lambda \cdot (t + \Delta t))^{2} \} }{ exp \{ -(\lambda t)^{2}  \} } \\
+             & 1 - \dfrac{exp \{ -\lambda^{2}  \cdot (t + \Delta t)^{2}  \} }{ exp \{ -\lambda^{2} \cdot t^{2}  \} } \\
+             & 1 - exp \{ -\lambda^{2} ( (t + \Delta t)^{2} - t^{2}) \} 
+    \end{aligned}
+\end{equation} 
+
+```{r 3_setup, include =F}
+
+delta_t <- seq(0,2,length=1000)       # Grid for delta_t = DELTA t (small time interval)
+lambda <- 1
+
+P1 <- lambda*delta_t                  # approximation
+P2 <- 1-exp(-lambda*delta_t)          # accurate probability
+difference <- P1-P2                  # difference (independent of t)
+
+```
+
+```{r 3}
+
+par(mfrow=c(1,2))
+plot(delta_t,P1,type="l",ylab="P( t <= T < t+delta_t | T >= t )",col="blue",main="Exponential distribution")
+lines(delta_t,P2,col="magenta")
+legend("topleft",legend=c("P_2","P_1 (approximation)"),col=c("magenta","blue"),bg="white",lty=1)
+plot(delta_t,abs(difference),type="l",ylab="difference",col="green",main="Difference")
+```
+
 
 
 
