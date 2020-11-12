@@ -1,0 +1,21 @@
+---
+site: "bookdown::bookdown_site"
+output:
+  bookdown::gitbook:
+    lib_dir: "book_assets"
+  bookdown::pdf_book:
+    keep_tex: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Exercise 1
+
+_In this exercise we consider a study of a cohort of nickel smelting workers in South Wales.1
+The data from this study are contained in the data frame nickel in the R package Epi. Once
+installed, load the package Epi by means of the command `library(Epi)`. Then load the data
+set nickel with `data(nickel)`. Make use of `help(nickel)` to become acquainted with the
+data set._

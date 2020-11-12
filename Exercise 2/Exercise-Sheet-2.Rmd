@@ -1,0 +1,199 @@
+---
+site: bookdown::bookdown_site
+output:
+  pdf_document: default
+  bookdown::pdf_book:
+    keep_tex: yes
+  bookdown::gitbook:
+    lib_dir: book_assets
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+
+```
+
+# Analysis of Time-to-Event Data: Study Sheet 2
+
+# Submission: René-Marcel Kruse, Doctorial Candidate
+
+
+# Exercise 1:
+_Freireich et al. (1963) report the results of a clinical trial of a drug 6-mercaptopurine (6-
+MP) versus a placebo in 42 children with acute leukemia. The trial was conducted at 11
+American hospitals. Patients were selected who had a complete or partial remission of their
+leukemia induced by treatment with the drug prednisone. (A complete or partial remission
+means that either most or all signs of disease had disappeared from the bone marrow.)
+The trial was conducted by matching pairs of patients at a given hospital by remission
+status (complete or partial) and randomizing within the pair to either a 6-MP or placebo
+maintenance therapy. Patients were followed until their leukemia returned (relapse) or until
+the end of study. The data are given in the data frame drug6mp in the R package `KMsurv`. Make
+use of `help(drug6mp)` to become acquainted with the data set. Note that the remission times
+in Freireich et al. (1963) were measured in weeks and not, as indicated in `help(drug6mp)`, in
+months!_
+
+## (a)
+_Consider only the 6-MP patients. Compute (using only your pocket calculator) the
+Kaplan-Meier estimate of the survivor function along with the standard errors._ 
+
+Kaplan-Meier Estimator given as:
+$$\hat{S}(t) = \prod_{t_{k} \leq t} (1 - \dfrac{d_{k}}{n_{k}})$$
+Variance of KP Estimator is as follows:
+$$ var(\hat{S}(t)) = \hat{S}(t)^{2} \cdot \sum_{t_{k} \leq t} \dfrac{d_{k}}{n_{k}(n_{k} - d_{k})})$$
+
+| $t_{k}$ | $n_{k}$ | $d_{k}$ | $\dfrac{d_{k}}{n_{k}}$      | $(1 - \dfrac{d_{k}}{n_{k}})$    | $\hat{S}(t)$                                                        | $\dfrac{d_{k}}{n_{k}(n_{k} - d_{k})}$ | $var(\hat{S}(t))$ |
+|:--------|:------- |:--------|:--------------------------- |:--------------------------------|:------------------------------------------------------------------- | :------------------------------------ |:----------------- |:---------------- |
+| 0       | 21      |0        |0                            |1                                | 1                                                                   | 0                                     |0 | 
+| 6       | 21      |3        |$\frac{3}{21}$=```r round(3/21, 3) ```  |$(1-\frac{3}{31})$=```r round(3/21, 3)```  |$(1 - \frac{3}{31})$=```r round(1 - 3/21, 3)```                                | $\frac{3}{21 * 18}$                   | $0.0058$
+|$6^*$    | 18      |0        |0                            |1                                |$(1 - \frac{3}{31})$=```r round(1 - 3/21, 3)```                                | $0$                                   | $0.0058$
+|7        | 17      |1        |$\frac{1}{17}$ =```r round(1/17, 3) ```|$(1- \frac{1}{17})$=```r round(1/17, 3)``` |$(1 - \frac{3}{31}) \cdot (1 - \frac{1}{17})$=```r round((1 - 3/21)*(1-1/17), 3) ```| $\frac{7}{17(17 - 1)}$                | $0.0078$
+
+
+
+## (b)
+_In `R`, using the `survfit` function from the package survival, compute and plot the
+Kaplan-Meier estimates of S(t) for the two treatment groups._
+
+```{r b_setup, include = FALSE}
+library(KMsurv)
+library(survival)
+data(drug6mp, package = "KMsurv")
+Surv(drug6mp$t2, drug6mp$relapse)
+
+treatment     <- survfit(Surv(t2,relapse) ~ 1, 
+                        data = drug6mp)
+placebo <- survfit(Surv(t1, rep(1, 21)) ~ 1, data = drug6mp)
+
+```
+
+```{r b}
+
+plot(treatment,
+     conf.int=FALSE, 
+     lty=1, col = "blue")
+lines(placebo, lty=2, conf.int=FALSE, col = "red")
+legend(20,0.4, bty="n", lty=c(1,2), col = c("blue", "red") , legend=c("Treatment", "Placebo (not the Band!)"))
+
+```
+
+
+## (c)
+_Consider again only the 6-MP patients. Compute (using only your pocket calculator)
+the Nelson-Aalen estimate of the cumulative hazard function and its estimated variance._
+
+The Nelson-Aalen Estimator is given as:
+\begin{eqnarray*}
+\tilde{H}(t)= 
+    \begin{cases}  
+        0 & \;\mbox{for}\; {t} < t_{1}, \\
+        \sum_{t_{k} \leq t} \frac{d_{k}}{n_{k}} & \;\mbox{for}\; {t} \geq t_{1}.
+    \end{cases}
+\end{eqnarray*} 
+
+The variance of the NA-Estimator is as follows:
+$$ \widehat{Var}(\tilde{H}(t)) =  \sum_{t_{k} \leq t} \frac{d_{k}}{n_{k}^2} $$
+
+
+| $t_{k}$ | $n_{k}$ | $d_{k}$ | $\dfrac{d_{k}}{n_{k}}$                 | $\tilde{H}(t)$                                                 | $\frac{d_{k}}{n_{k}^2}$                      |$\widehat{Var}(\tilde{H}(t)) =  \sum_{t_{k} \leq t} \frac{d_{k}}{n_{k}^2}$   |
+|:--------|:------- |:--------|:-------------------------------------- |:---------------------------------------------------------------| :--------------------------------------------|:--------------------------------------------------------------------------- |
+| 0       | 21      |0        |0                                       |0                                                               | 0                                            | 0                                                                           | 
+| 6       | 21      |3        |$\frac{3}{21}$=```r round(3/21, 3) ```  |$(\frac{3}{21})$=```r round(3/21, 3)```                         | $\frac{3}{21^{2}}$=```r round(3/21^2, 3)```  | $\frac{3}{21^{2}}$=```r round(3/21^2, 3)```                                 |
+|$6^*$    | 18      |0        |0                                       |1                                                               | $0$                                          | $\frac{3}{21^{2}}$=```r round(3/21^2, 3)```                                 |
+|7        | 17      |1        |$\frac{1}{17}$ =```r round(1/17, 3) ``` |$(\frac{1}{17}) + (\frac{3}{21})$=```r round(1/17 + 3/21, 3)``` | $\frac{1}{17^2}$=```r round(1/17^2, 3)```    |  $\frac{3}{21^{2}} + \frac{1}{17^2}$=```r round(3/21^2 + 1/17^2, 3)```      |
+
+
+
+## (d)
+_Write a function `nelson.aalen <- function(time,delta)` in R that returns, for a
+given set of data, the Nelson-Aalen estimator of the cumulative hazard and its estimated
+variance. The argument time corresponds to the event times of the n individuals and
+delta is a censoring indicator._
+
+```{r d_setup, include = FALSE}
+
+nelson.aalen <- function(time,delta)
+{
+  n <- length(time)
+  
+  # Sort data
+  o     <- order(time)
+  time  <- time[o]
+  delta <- delta[o]
+  
+  # Frequency table of survival times
+  # (censored = 0, event = 1)
+  timetable      <- table(time,delta)
+  distinct.times <- unique(time)
+  
+  # Number of events at survival times t_(i)
+  d <- timetable[,2]
+  
+  # Risk set
+  timeNoDelta <- apply(timetable, MARGIN=1, sum)
+  Y           <- n - c(0,cumsum(timeNoDelta)[-length(timeNoDelta)])
+  
+  # Nelson-Aalen estimator and standard errors
+  na  <- cumsum(d/Y)
+  std <- sqrt(cumsum(d/Y^2))
+  
+  # Return results
+  erg <- list(time = distinct.times,
+              cumhaz = na,
+              std = std)
+  return(erg)
+}
+
+
+delta <- drug6mp$relapse
+time  <- drug6mp$t2
+
+NAEstimator <- nelson.aalen(drug6mp$t2,delta)
+
+
+alpha <- 0.05
+ci <- cbind(NAEstimator$cumhaz,NAEstimator$cumhaz) + outer(qnorm(1-alpha/2)*NAEstimator$std, c(-1,1))
+
+```
+
+```{r d}
+NAEstimator
+```
+
+
+## (e)
+_For the 6-MP group, compute and plot in R the Nelson-Aalen estimator along with
+95% pointwise asymptotic confidence intervals_
+
+```{r e}
+matplot(NAEstimator$time, cbind(NAEstimator$cumhaz,ci),
+        xlab="time", ylab="value",
+        main="NA-Estimator at alpha =0.05 pointwise CIs", 
+        col=c(1,"black","black"), lty=c(1,2,2),lwd=c(3,1,1),type="s")
+```
+
+
+## (f)
+<!-- _Graphically compare in R the Nelson-Aalen estimator $H_{NA}(t)$ with the -->
+<!-- Breslow estimator $H_B(t) = − ln(\hat S_{KM}(t))$._ -->
+
+```{r f_setup, include=F}
+km <- survfit(Surv(t2,relapse)~1, data=drug6mp,type="kaplan-meier",conf.type="none")
+breslow <- -log(km$surv)
+
+```
+
+
+```{r f}
+plot(NAEstimator$time,NAEstimator$cumhaz,xlab="t", lty=1, type="s")
+lines(km$time,breslow,type="s", lty = 2, col="red")
+legend("bottomright",c("Breslow","Nelson-Aalen"),lty=1,col=c("black","red"))
+
+```
+
+
+
+
+
