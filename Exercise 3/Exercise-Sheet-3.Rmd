@@ -1,0 +1,572 @@
+---
+site: bookdown::bookdown_site
+output:
+  pdf_document: default
+  bookdown::pdf_book:
+    keep_tex: yes
+  bookdown::gitbook:
+    lib_dir: book_assets
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+
+```
+
+# Analysis of Time-to-Event Data: Study Sheet 3
+
+# Submission: René-Marcel Kruse, Doctorial Candidate
+
+# Exercise 1:
+_In **R** make use of the function `rgamma()` to generate 250 event times from a Gamma
+distribution with shape parameter `1.5` and scale parameter `0.75`. Then, generate censored
+observations according to the following censoring schemes:_
+
+```{r ex1_setup, include=FALSE}
+library(survival)
+set.seed(42)
+n         <- 250
+shape     <- 1.5
+scale     <- 0.75
+?rgamma
+true.t  <- sort(rgamma(n,shape,scale))
+(mean.t   <- shape*scale)
+(var.t    <- shape*scale^2)
+par(mfrow=c(1,1))
+hist(true.t)
+abline(v=mean.t,col=2)
+abline(v=mean.t+sqrt(var.t),col=2,lty=2)
+abline(v=mean.t-sqrt(var.t),col=2,lty=2)
+survivor <- 1-pgamma(true.t,shape,scale)
+cum.hazard <- -log(survivor)
+NA_estimator <- function(time,delta)
+{
+  n <- length(time)
+  
+  # Sort data
+  o     <- order(time)
+  time  <- time[o]
+  delta <- delta[o]
+  
+  # Frequency table of survival times
+  # (censored = 0, event = 1)
+  timetable      <- table(time,delta)
+  distinct.times <- unique(time)
+  
+  # Number of events at survival times t_(i)
+  d <- timetable[,2]
+  
+  # Risk set
+  timeNoDelta <- apply(timetable, MARGIN=1, sum)
+  Y           <- n - c(0,cumsum(timeNoDelta)[-length(timeNoDelta)])
+  
+  # Nelson-Aalen estimator and standard errors
+  na  <- cumsum(d/Y)
+  std <- sqrt(cumsum(d/Y^2))
+  
+  # Return results
+  erg <- list(time = distinct.times,
+              cumhaz = na,
+              std = std)
+  return(erg)
+}
+```
+
+## (a)
+_For every individual $i = 1, . . . , n$ there is a fixed observation period $c_{i}$ (type $I$ censoring).
+Assume that the fixed observation period is the same for all individuals and set
+$c = 1, 3, 5$._
+
+## Answer:
+
+**Censor times**
+```{r ex1a_1}
+t1     <- pmin(true.t,1)
+t2     <- pmin(true.t,3)
+t3     <- pmin(true.t,5)
+```
+
+**deltas**
+```{r ex1a_2}
+d1 <- 1*(true.t<=1)
+d2 <- 1*(true.t<=3)
+d3 <- 1*(true.t<=5)
+```
+
+**Survival**
+```{r ex1a_3}
+surv1  <- Surv(t1,d1)
+surv2  <- Surv(t2,d2)
+surv3  <- Surv(t3,d3)
+```
+
+**KM-estimator**
+```{r ex1a_4}
+km1 <- survfit(surv1 ~ 1,type="kaplan-meier")
+km2 <- survfit(surv2 ~ 1,type="kaplan-meier")
+km3 <- survfit(surv3 ~ 1,type="kaplan-meier")
+```
+
+**Nelson-Ahlen Estimator**
+```{r ex1a_5}
+na1 <- NA_estimator(t1,d1)
+na2 <- NA_estimator(t2,d2)
+na3 <- NA_estimator(t3,d3)
+```
+
+**Sum of total events**
+```{r ex1a_6}
+sum(d1)
+sum(d2)
+sum(d3)
+```
+
+## Answer:
+
+```{r ex1a_7, echo=FALSE, fig.asp = .5}
+par(mfrow=c(1,2),mar=c(5,5,4,2)+0.1)
+plot(km3,col=2,main=paste("Kaplan-Meier estimator"),
+     xlab="t",xlim=c(0,5.2))
+lines(km2,col=3)
+lines(km1,col=4)
+abline(v=c(1,3,5),col=c(4,3,2))
+lines(true.t[true.t<=5],survivor[true.t<=5],col=1)
+legend("topright",c("c=1","c=3","c=5","Model"),lty=1,col=c(4,3,2,1),bg="white")
+
+plot(na3$time,na3$cumhaz,col=2,type="s",main=paste("Nelson-Aalen estimator"),
+     xlab="t",xlim=c(0,5.2),ylim=c(0,5))
+lines(na2$time,na2$cumhaz,type="s",col=3)
+lines(na1$time,na1$cumhaz,type="s",col=4)
+abline(v=c(1,3,5),col=c(4,3,2))
+lines(true.t[true.t<=5],cum.hazard[true.t<=5],col=1)
+legend("topright",c("c=1","c=3","c=5","Model"),lty=1,col=c(4,3,2,1),bg="white")
+```
+
+
+## (b)
+_The study continues until the failure of the first $k$ individuals, where $k$ is some
+predetermined integer $(k < n)$ (type $II$ censoring). Set $k = 100, 150, 200$._
+
+**Censoring Times**
+```{r ex1b_1}
+t1 <- c(true.t[1:100], rep(true.t[100], n-100))
+t2 <- c(true.t[1:150],rep(true.t[150],n-150))
+t3 <- c(true.t[1:200],rep(true.t[200],n-200))
+```
+
+**Deltas**
+```{r ex1b_2}
+d1 <- c(rep(1,100), rep(0,n-100))
+d2 <- c(rep(1,150),rep(0,n-150))
+d3 <- c(rep(1,200),rep(0,n-200))
+```
+
+**Survivals**
+```{r ex1b_3}
+surv1 <- Surv(t1,d1)
+surv2 <- Surv(t2,d2)
+surv3 <- Surv(t3,d3)
+```
+
+**Kaplan-Meier Estimator**
+```{r ex1b_4}
+km1 <- survfit(surv1~1,type="kaplan-meier")
+km2 <- survfit(surv2~1,type="kaplan-meier")
+km3 <- survfit(surv3~1,type="kaplan-meier")
+```
+
+
+**Nelson-Aalen Estimator**
+```{r ex1b_5}
+na1 <- NA_estimator(t1,d1)
+na2 <- NA_estimator(t2,d2)
+na3 <- NA_estimator(t3,d3)
+```
+
+## Answer:
+
+```{r ex1b_7, echo = FALSE, fig.asp = .5}
+par(mfrow=c(1,2),mar=c(5,5,4,2)+0.1)
+plot(km3,col=2,main=paste("Kaplan-Meier estimator"),
+     xlab="t",xlim=c(0,5.2))
+lines(km2,col=3)
+lines(km1,col=4)
+abline(v=c(max(km1$time),max(km2$time),max(km3$time)),col=c(4,3,2))
+lines(true.t[true.t<=5],survivor[true.t<=5],col=1)
+legend("topright",c("k = 100","k = 150","k = 200","Model"),lty=1,col=c(4,3,2,1),bg="white")
+
+plot(na3$time,na3$cumhaz,col=2,type="s",main=paste("Nelson-Aalen estimator"),
+     xlab="t",xlim=c(0,5.2),ylim=c(0,5))
+lines(na2$time,na2$cumhaz,type="s",col=3)
+lines(na1$time,na1$cumhaz,type="s",col=4)
+abline(v=c(max(na1$time),max(na2$time),max(na3$time)),col=c(4,3,2))
+lines(true.t[true.t<=5],cum.hazard[true.t<=5],col=1)
+legend("topright",c("k = 100","k = 150","k = 200","Model"),lty=1,col=c(4,3,2,1),bg="white")
+```
+
+## (c)
+_Each unit has associated with it a potential censoring time $C_i$ and a potential lifetime
+$T_i$ , which are assumed to the independent random variables (type $III$ censoring or
+random censoring). Assume that the censoring times are exponentially distributed with
+parameter $\lambda = 0.25, 0.5, 1$._
+
+**Censoring times**
+
+```{r ex1c_1}
+c1     <- rexp(n,rate=0.25)
+t1     <- pmin(true.t,c1)
+c2     <- rexp(n,rate=0.5)
+t2     <- pmin(true.t,c1)
+c3     <- rexp(n,rate=1)
+t3     <- pmin(true.t,c1)
+```
+
+**Deltas**
+
+```{r ex1c_2}
+d1 <- 1*(true.t<=c1)
+d2 <- 1*(true.t<=c2)
+d3 <- 1*(true.t<=c3)
+```
+
+**Survivals**
+
+```{r ex1c_3}
+surv1 <- Surv(t1,d1)
+surv2 <- Surv(t2,d2)
+surv3 <- Surv(t3,d3)
+```
+
+**Sum of total events**
+
+```{r ex1c_4}
+sum(d1)
+sum(d2)
+sum(d3)
+```
+
+**KM estimator**
+
+```{r ex1c_5}
+km1 <- survfit(surv1~1,type="kaplan-meier")
+km2 <- survfit(surv2~1,type="kaplan-meier")
+km3 <- survfit(surv3~1,type="kaplan-meier")
+```
+
+
+**NA estimator**
+
+```{r ex1c_6}
+na1 <- NA_estimator(t1,d1)
+na2 <- NA_estimator(t2,d2)
+na3 <- NA_estimator(t3,d3)
+```
+
+## Answer:
+
+```{r ex1c_7,echo=FALSE, fig.asp = .5}
+par(mfrow=c(1,2),mar=c(5,5,4,2)+0.1)
+plot(km3,col=2,main=paste("Kaplan-Meier estimator"),
+     xlab="t",xlim=c(0,5.2),mark.time=F)
+lines(km2,col=3,mark.time=F)
+lines(km1,col=4,mark.time=F)
+abline(v=c(max(km1$time),max(km2$time),max(km3$time)),col=c(4,3,2))
+lines(true.t,survivor,col=1)
+legend("topright",c("lambda = 0.25","lambda = 0.50","lambda = 1.00","Model"),lty=1,col=c(4,3,2,1),bg="white")
+
+plot(na3$time,na3$cumhaz,col=2,type="s",main=paste("Nelson-Aalen estimator"),
+     xlab="t",xlim=c(0,5.2),ylim=c(0,5))
+lines(na2$time,na2$cumhaz,type="s",col=3)
+lines(na1$time,na1$cumhaz,type="s",col=4)
+abline(v=c(max(na1$time),max(na2$time),max(na3$time)),col=c(4,3,2))
+lines(true.t,cum.hazard,col=1)
+legend("topright",c("lambda = 0.25","lambda = 0.50","lambda = 1.00","Model"),lty=1,col=c(4,3,2,1),bg="white")
+```
+
+
+\newpage
+
+# Exercise 2:
+
+_The file `melanoma.dat`, which is stored along with a description in the Stud.IP folder “Data”,
+contains data of a clinical study at the Department of Plastic Surgery, University Hospital
+of Odense, Denmark. 205 patients were observed during the years 1962 to 1977 after a skin
+cancer operation (removal of the tumor and the surrounding skin), either up to the end of
+the year 1977 or their early death._
+
+## (a)
+_Write a function `lifetable <- function(time,delta,grid){...}` in **R** to imple-
+ment the life-table method. The argument time corresponds to the event `times` of the
+n individuals, `delta` is a censoring indicator and `grid` contains the points used for
+discretization of the time axis. For a given set of data, the function should return the
+conditional probability of experiencing the event in each interval, the estimated survival
+function at the start of each interval, and the estimated density and hazard rate at the
+midpoint of each interval._
+
+```{r ex2a_setup, include=FALSE}
+melanoma <- read.csv("melanoma.dat", sep="")
+time  = melanoma$time
+delta = 1*(melanoma$state==1)
+grid  =  seq(0,6000,100)
+```
+
+## Answer: ... Fortunately still had the solutions from the year before last
+```{r ex2a_1}
+lifetable <- function(time,delta,grid)
+{
+  q <- length(grid)-1 
+  n <- length(time)   
+  d <- numeric(q)     
+  Y <- rep(n,q+1)     
+  w <- numeric(q)     
+  h <- numeric(q)     
+  
+  for(k in 1:q)
+  {
+    d[k] <- sum(delta[time>=grid[k] & time<grid[k+1]])
+    w[k] <- length(delta[time>=grid[k] & time<grid[k+1]])-d[k]
+    Y[k+1] <- Y[k] - d[k] - w[k]
+    h[k] <- grid[k+1] - grid[k]
+  }
+  cp.event <- survivor <- density <- hazard <- numeric(q)
+  cp.event <- d / (Y[-(q+1)] - w/2)
+  survivor <- cumprod(1-cp.event)
+  density <- ( c(1,survivor[-q]) - survivor ) / h
+  hazard <- 2*cp.event / (h * (2-cp.event))
+  cp.event <- c(cp.event,cp.event[q])
+  survivor <- c(1,survivor)
+  density <- c(density,density[q])
+  hazard <- c(hazard,hazard[q])
+  erg <- list(cp.event=cp.event,
+              survivor=survivor,
+              density=density,
+              hazard=hazard)
+  return(erg)
+}
+```
+
+
+
+## (b)
+_Apply your function written in (a) to the skin cancer data. Define an appropriate
+censoring indicator `delta` and use equidistant time intervals `(grid)` between 0 and
+6000 with interval lengths 100, 500, 1000 and 2000. Display each quantity that is asked
+for in (a) graphically and interpret the results._
+
+## Answer:
+
+```{r ex2b_1, echo=FALSE}
+t <- list(seq(0, 6000, 100), seq(0, 6000, 500),seq(0, 6000, 1000),seq(0, 6000, 2000))
+lt <- list(0, 0,0,0)
+for (i in 1:4){ lt[[i]] <- lifetable(time, delta, t[[i]])}
+
+par(mfrow=c(2, 2))
+plot(t[[1]], lt[[1]]$density, type="s", ylim=c(0, 0.0003))
+for (i in 2:4) lines(t[[i]], lt[[i]]$density, type="s", col=i)
+title("Density")
+legend("topright", c("h=100", "h=500", "h=1000", "h=2000"), col=1:4, lty=1)
+plot(t[[1]], lt[[1]]$survivor, type="s", ylim=c(0.6, 1.0))
+for (i in 2:4) lines(t[[i]], lt[[i]]$survivor, type="s", col=i)
+title("Survivor function")
+legend("topright", c("h=100", "h=500", "h=1000", "h=2000"), col=1:4, lty=1)
+plot(t[[1]], lt[[1]]$cp.event, type="s", ylim=c(0, 0.3))
+for (i in 2:4) lines(t[[i]], lt[[i]]$cp.event, type="s", col=i)
+title("Conditional probability of experiencing the event")
+legend("topright",  c("h=100", "h=500", "h=1000", "h=2000"), col=1:4, lty=1)
+plot(t[[1]], lt[[1]]$hazard, type="s", ylim=c(0, 0.0005))
+for (i in 2:4) lines(t[[i]], lt[[i]]$hazard, type="s", col=i)
+title("Hazard rate")
+legend("topright",  c("h=100", "h=500", "h=1000", "h=2000"), col=1:4, lty=1)
+```
+
+
+## (c)
+_In **R**, compute and plot the Kaplan-Meier estimate of the survivor function for the data
+of survival after malignant melanoma._
+
+## Answer:
+
+```{r ex2c_1, echo=FALSE, fig.asp = .5}
+library(survival)
+delta <- 1*(melanoma$state==1)
+melaSurv <- Surv(time,delta)
+km <- survfit(melaSurv~1,type="kaplan-meier",conf.type="none")
+par(mar=c(5, 5, 4, 2) + 0.1)
+plot(km, main="KM estimator",xlab="t",)
+```
+
+
+## (d)
+_Graphically compare the Kaplan-Meier estimate obtained in (c) with the estimate of
+the survivor function obtained by the life-table method._
+
+## Answer:
+```{r ex2d_1, echo=FALSE, fig.asp = .5}
+par(mfrow=c(1,2),mar=c(5, 5, 4, 2) + 0.1)
+plot(km,main="Survival",xlab="t")
+a <- seq(0,6000,100)
+lt <- lifetable(time,delta,a)
+lines(a,lt$survivor,type="s",col="blue")
+legend("bottomleft",legend=c("Kaplan-Meier","grid = 100"),col=c(1,"blue"),lty=1)
+
+plot(km,main="Survival",xlab="t")
+a <- seq(0,6000,500)
+lt <- lifetable(time, delta, a)
+lines(a, lt$survivor, type="s",col="blue")
+legend("bottomleft",legend=c("Kaplan-Meier","grid = 500"),col=c(1,"blue"),lty=1)
+```
+
+
+```{r ex2d_2, echo=FALSE, fig.asp = .5}
+par(mfrow=c(1,2),mar=c(5, 5, 4, 2) + 0.1)
+plot(km,main="Survival",xlab="t")
+a <- seq(0,6000,1000)
+lt <- lifetable(time, delta, a)
+lines(a, lt$survivor, type="s",col="blue")
+legend("bottomleft",legend=c("Kaplan-Meier","grid = 1000"),col=c(1,"blue"),lty=1)
+
+plot(km,main="Survival",xlab="t")
+a <- seq(0,6000,2000)
+lt <- lifetable(time, delta, a)
+lines(a, lt$survivor, type="s",col="blue")
+legend("bottomleft",legend=c("Kaplan-Meier","grid = 2000"),col=c(1,"blue"),lty=1)
+```
+
+
+\newpage
+
+# Exercise 3:
+_Several proposals for computing pointwise confidence intervals for values of the survival
+function do exist._
+
+## (a)
+_Recall the data file `melanoma.dat` that was analysed in exercise 2. In **R**, use the
+`survfit()` function from the package survival to compute the Kaplan-Meier estimate
+of the survivor function and compare various pointwise $95\%$ confidence intervals that
+are available in the option `conf.type`._
+```{r ex3a_setup, include=FALSE}
+melanoma <- read.csv("melanoma.dat", sep="")
+library(survival)
+data(melanoma)
+delta <- 1*(melanoma$state==1)
+time  <- melanoma$time
+melaSurv <- Surv(time,delta)
+```
+
+## Answer:
+
+```{r ex3a_1, echo=FALSE, fig.asp = .5}
+par(mfrow=c(1,1),mar=c(5,5,4,2)+0.1)
+plot(km2,mark.time=F,col="blue",lwd=1,xlab="t",ylim=c(0.5,1))
+par(new=TRUE)
+plot(km3,mark.time=F,col="red",lwd=1,ylim=c(0.5,1))
+par(new=TRUE)
+plot(km1,mark.time=F,lwd=1,main="Different CIs",ylim=c(0.5,1))
+legend("bottomleft",c("standard","log(S(t))","log(-log(S(t)))"),
+       col=c("black","blue","red"), lty=1, lwd=2)
+```
+
+
+## (b)
+_Use the delta method that was introduced in the lectures to derive the asymptotic
+variance of $\mathrm{ln} ( -\mathrm{ln} ( \hat{S}(t)  )$._
+
+## Answer:
+
+The delta method is given as:
+$$ Var(f(x)) = Var(x) \cdot \Bigg( \dfrac{\delta(f(x))}{\delta x}  \Bigg)^{2} $$
+
+Applied to our problem we get:
+
+\begin{align}
+    \mathrm{Var}\Big( \mathrm{ln} ( -\mathrm{ln} ( \hat{S}(t)  )  \Big) &= \mathrm{Var} \Big(  \mathrm{ln}( \hat{S}(t)  ) \Big) \cdot \Bigg( \dfrac{\delta \big( \mathrm{ln}( -\mathrm{ln}( \hat{S}(t)  )  \big) }{\delta \Big(  \mathrm{ln}( \hat{S}(t)  ) \Big)}  \Bigg)^{2}  \\
+    &=  \mathrm{Var} \Big(  \mathrm{ln}( \hat{S}(t)  ) \Big) \cdot \dfrac{1}{\mathrm{ln}( \hat{S}(t) )^{2} } \\
+    &= \sum_{t_{i} \leq t} \dfrac{d_{k}}{ n_{k} (n_{k} - d_{k})} \cdot \dfrac{1}{\mathrm{ln}( \hat{S}(t) )^{2} }
+\end{align}
+
+
+
+## (c)
+_Based on the result obtained in (b) give a corresponding asymptotic $100 ( 1 - \alpha ) \%$ 
+confidence interval for $S(t)$._
+
+## Answer:
+
+CI for $\hat{S}(t)$ given by:
+
+$$ CI_{\pm} = \mathrm{ln} \big( \mathrm{-ln} (\hat{S}(t) \big) \pm z_{\frac{\alpha}{2}} \cdot \sqrt{  \mathrm{Var}\Big( \mathrm{ln} ( -\mathrm{ln} ( \hat{S}(t)  )  \Big) }$$
+
+
+\newpage
+
+# Exercise 4:
+_In this exercise we consider data on the efficiency of bone marrow transplants for patients
+with acute myelotic leukemia (AML) and acute lymphoblastic leukemia (ALL). The data are
+reported in section 1.3 and appendix D of Klein and Moeschberger (2003) and details of this
+study are given in Copelan et al. (1991). The data are contained in the data frame `bmt` in
+the **R** package `KMsurv`. Make use of  `help(bmt)` to become acquainted with the data set._
+
+```{r ex4_setup, include = FALSE}
+library(KMsurv)
+data(bmt)
+library(survival)
+library(km.ci)
+```
+
+## (a)
+_We shall focus on the disease-free survival probabilities for the 38 patients with ALL. An
+individual is said to be disease free at a given time after transplant if that individual is
+alive without the recurrence of leukemia. In **R**, construct and graphically compare $95\%$
+pointwise confidence intervals, Equal-Precision (EP) confidence bands and Hall-Wellner
+confidence bands for the disease-free survival function in the range $100 \leq t \leq 600$.
+Hint: In the lecture, we used the function `confBands()` from the R package `OIsurv` to
+construct confidence bands. Confidence bands can also be computed using the `km.ci()`
+function in the **R** package `km.ci`._
+
+```{r ex4a_1, echo=FALSE, fig.asp = .5}
+fit <- survfit(Surv(bmt$t2[bmt$group==1],bmt$d3[bmt$group==1]) ~ 1,
+               type="kaplan-meier",conf.int=FALSE)
+pw <- km.ci(fit, conf.level=0.95, tl=NA, tu=NA, method="log")
+epbands <- km.ci(fit, conf.level=0.95, tl=NA, tu=NA, method="logep")
+hwbands <- km.ci(fit, conf.level=0.95, tl=NA, tu=NA, method="loghall")
+par(mfrow=c(1,1),mar=c(5,5,4,2)+0.1)
+plot(fit,mark.time=F,col="black",xlab="Days",ylab="Estimated survival function", lty=1, main="95%-CI ", xlim=c(100,600))
+lines(pw, mark.time=F, col="blue", lty=1)
+lines(epbands, mark.time=F, col="red", lty=1)
+lines(hwbands, mark.time=F, col="black", lty=1)
+
+legend("bottomleft",c("Pointwise CI","EP CB","Hall-Wellner CB","KM estimate"),
+       col=c("blue","red","black","black"), lty=c(2,2,2,1), lwd=1)
+```
+
+## (b)
+_Estimate the mean disease-free survival time for the three disease groups._
+
+```{r ex4b_1, echo=FALSE, fig.asp = .5}
+bmtSurv  <- Surv(bmt$t2[bmt$group==1],bmt$d3[bmt$group==1])
+bmtsurv2 <- Surv(bmt$t2[bmt$group==2],bmt$d3[bmt$group==2])
+bmtsurv3 <- Surv(bmt$t2[bmt$group==3],bmt$d3[bmt$group==3])
+print(survfit(bmtSurv~1), print.rmean=TRUE)
+print(survfit(bmtsurv2~1), print.rmean=TRUE)
+print(survfit(bmtsurv3~1), print.rmean=TRUE)
+
+### Median survival time and CI
+plot(survfit(bmtSurv~1))
+abline(h = 0.5)
+abline(v = quantile(survfit(bmtSurv~1), probs = 0.5)$quantile)
+abline(v = quantile(survfit(bmtSurv~1), probs = 0.5)$lower)
+```
+
+## (c)
+_Estimate the median disease-free survival time for the three disease groups and
+construct a $95\%$ confidence interval for the median._
+
+```{r ex4c_1, echo=FALSE, fig.asp = .5}
+quantile(survfit(bmtSurv~1), probs = 0.5)$quantile
+quantile(survfit(bmtSurv~1), probs = c(0.025, 0.5, 0.975))$quantile
+quantile(survfit(bmtsurv2~1), probs = c(0.025, 0.5, 0.975))$quantile
+quantile(survfit(bmtsurv3~1), probs = c(0.025, 0.5, 0.975))$quantile
+```

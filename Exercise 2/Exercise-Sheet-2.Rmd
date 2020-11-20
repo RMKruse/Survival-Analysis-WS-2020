@@ -1,13 +1,13 @@
 ---
 site: bookdown::bookdown_site
 output:
-  html_document:
-    df_print: paged
+  pdf_document: default
   bookdown::pdf_book:
     keep_tex: yes
   bookdown::gitbook:
     lib_dir: book_assets
-  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
