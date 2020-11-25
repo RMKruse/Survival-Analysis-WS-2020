@@ -1,0 +1,367 @@
+---
+site: bookdown::bookdown_site
+output:
+  pdf_document: default
+  bookdown::pdf_book:
+    keep_tex: yes
+  bookdown::gitbook:
+    lib_dir: book_assets
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+
+```
+
+# Analysis of Time-to-Event Data: Study Sheet 4, 
+# Submission by: René-Marcel Kruse
+
+# Exercise 1:
+_Recall the data file melanoma.dat that was analysed previously. In R, one can use the
+survdiff() function from the package survival to test whether male and female patients
+have the same survival function._
+
+```{r setup_1, include = FALSE}
+library(survival)
+melanoma <- read.csv("melanoma.dat", sep="")
+delta <- 1*(melanoma$state==1)
+```
+
+## (a)
+_Create a graph of the Kaplan-Meier estimator stratified by gender along with
+95% pointwise confidence bounds using the complementary log-log transformation
+(log-log). What do you conclude from this plot regarding the equality of the genderspecific survivor functions?_
+
+## Answer:
+```{r ex1_a, echo=FALSE}
+
+melaSurv.maenner <- Surv(melanoma$time[melanoma$sex==1],delta[melanoma$sex==1])
+km.maenner <- survfit(melaSurv.maenner~1,type="kaplan-meier",conf.type="log-log")
+
+melaSurv.frauen <- Surv(melanoma$time[melanoma$sex==0],delta[melanoma$sex==0])
+km.frauen <- survfit(melaSurv.frauen~1,type="kaplan-meier",conf.type="log-log")
+
+# Plot
+#---------------------
+par(mfrow=c(1,1))
+plot(km.maenner, mark.time=F, col="blue")
+par(new=TRUE)
+plot(km.frauen, mark.time=F, col="red", axes = FALSE)
+legend("bottomright", c("women","men"), col=c("red","blue"),lty=1)
+```
+
+
+## (b)
+_Conduct both a log-rank test and a Wilcoxon test to test the null hypothesis that there
+is no difference in the survivor functions for men and women. Interpret the obtained
+output!_
+
+## Answer:
+```{r ex1_b}
+survdiff(Surv(melanoma$time,delta) ~ melanoma$sex, rho=0)
+survdiff(Surv(melanoma$time,delta)~ melanoma$sex, rho=1)
+```
+
+
+## (c)
+_Create a plot of the estimated Kaplan-Meier estimate of the survivor function for
+male patients with $95\%$ pointwise confidence bounds using the complementary log-log transformation together with the survivor function of an exponentially distributed
+random variable $T \sim \mathcal{E}(0.0002)$. Use the log-rank test to test the null hypothesis that
+the distribution of the survival time of men is exponential with $\lambda = 0.0002$. Hint: Make
+use of `help(survdiff)` to find out how a one sample test can be performed._
+
+## Answer:
+```{r ex1_c, echo=F}
+
+# Plot
+#-------
+par(mfrow=c(1,1))
+plot(km.maenner,mark.time=F,col="blue")
+lines(km.maenner$time,exp(-0.0002*km.maenner$time),type="s",col="red")
+legend("bottomright", c("random","men"), col=c("red","blue"),lty=1)
+
+# Log-rank test with offset S_0(t) = exp(-lambda_0*time) and lambda_0 = 0.0002
+## Offset to fix parameter
+#-------------------------------------------------------------------------------
+log.rank2 <- survdiff(melaSurv.maenner ~ offset(exp(-0.0002*km.maenner$time)),rho=0)
+log.rank2
+```
+
+
+# Exercise 2:
+_An approximation to the log-rank test statistic $W_L = U_L^2=V_L$ that was introduced in the
+lecture for comparing two survivor curves, and which avoids computing the variance $V_L$, is
+as follows:_ 
+$$
+X^2 = \sum_{k=1}^{2} \dfrac{(O_k - E_k)^2}{E_k} \sim \chi_1^2,
+$$
+_where $O_k = \sum_{j=1}^{r} d_{kj}$ and $E_k = \sum_{j=1}^{r} e_{kj}$ denotes, for group $k (k = 1, 2)$, the sum of the observed and expected counts over all $r$ distinct failure times across the two groups,
+respectively. Using the approximation formula (1), carry out a log-rank test for the breast
+cancer data example on slide 2 of the set of slides "Nonparametric methods for comparing
+survival distributions". Hint: You may use some of the results given on slide 9. Compare your
+results with the ones obtained in the lecture using the test statistic $W_L$._
+
+## Answer:
+We do know that the observed are denoted as:
+$$ O_k = \sum_{j=1}^{r} d_{kj}, $$
+and the expected are denoted as:
+$$ E_k = \sum_{j=1}^{r} \dfrac{n_{kj}\cdot d_{j}}{n_j}.$$
+
+The Log-Rank Test results for the underlying data is as follows:
+$$ O_1 = \sum_{j=1}^{r} d_{1,j} = d_{1,1} + d_{1,2} + \dots + d_{1,25} = 5$$
+$$ O_2 = \sum_{j=1}^{r} d_{2,j} = d_{2,1} + d_{2,2} + \dots + d_{2,25} = 21$$
+$$E_1 = \sum_{j=1}^{r} \dfrac{n_{1j}\cdot d_{j}}{n_1} = \dfrac{n_{1,1}\cdot d_{1}}{n_1} + \dfrac{n_{1,2}\cdot d_{2}}{n_2} + \dots + \dfrac{n_{1,25}\cdot d_{25}}{n_{25}} = 9.5652 $$
+We can calculate the value of $E_2$ based on the imposed relationship of $O_1 + O_2 = E_1 + E_2$. Following this notation, we can rearrange the relationship as follows:
+\begin{align*}
+  O_1 + O_2 &= E_1 + E_2 \\
+        E_2 &= O_1 + O_2 - E_1 \\
+        E_2 &= 5 + 21 - 9.5652 \\
+        E_2 &= 16.4348
+\end{align*}
+
+Now we only have to insert the calculated values into the original equation for $X^2$.
+
+\begin{align*}
+  X^2 &= \sum_{k=1}^{2} \dfrac{(O_k - E_k)^2}{E_k}\\
+  X^2 &= \dfrac{(5 - 9.5652)^2}{9.5652} + \dfrac{(21 - 16)^2}{16.4348} \\
+  X^2 &= 3.4469
+\end{align*}
+
+Resulting in a approximated p-value of: $0.0633$. 
+
+\newpage
+
+# Exercise 3:
+_Five hundred and ninety-five persons participate in a case control study of the association of
+cholesterol and coronary heart disease (CHD). Among them, 300 persons are known to have
+CHD and 295 are free of CHD. To find out if elevated cholesterol is significantly associated
+with CHD, the investigator decides to control the effects of smoking. The study subjects are
+then divided into two strata: smokers and nonsmokers. The following two tables provide the
+data._
+
+\textbf{Smokers} 
+
+|                       | with CHD    |Without CHD  | Total   |
+|:----------------------|:-----------:|:-----------:|:-------:|
+|Elevated Cholesterol   |             |             |         |
+|Yes                    |120          |20           |140      |
+|No                     |80           |60           |140      |
+|Total                  |200          |80           |280      |
+
+\textbf{Nonsmokers}
+
+|                       | with CHD    |Without CHD  | Total   |
+|:----------------------|:-----------:|:-----------:|:-------:|
+|Elevated Cholesterol   |             |             |         |
+|Yes                    |30           |60           |90       |
+|No                     |70           |155          |225      |
+|Total                  |100          |215          |315      |
+
+
+_Conduct an appropriate test to judge whether elevated cholesterol is significantly associated
+with CHD after adjusting for the effects of smoking._
+
+## Answer:
+
+We have a two strata problem, therefore, we have to use a Stratified Log-Rank Test.
+This test can be formulated as follows:
+$$
+  W_s = \dfrac{(\sum_{k=1}^{S} U_{L,K})^{2}}{\sum_{k=1}^{S} V_{L,K}} \sim \chi(1)^{2}.
+$$
+Applied to the underlying question at hand we get:
+$$
+  W_s = \dfrac{( U_{L,smoker} + U_{L,nonsmoker})^{2}}{ V_{L,smoker} + V_{L,nonsmoker}}.
+$$
+
+Where as the variable $U_L$ is defined as:
+$$
+  U_L = \sum_{j=1}^{r} = (d_{1, j} - e_{1,j}) = d_1 - e_1.
+$$
+Hence we can assume that:
+
+\begin{align*}
+  U_{L,smoker} &= d_{1, smoker} - e_{1, smoker} \\
+               &= d_{CHD, smoker} - e_{CHD, smoker} \\
+               &= 120 - (\dfrac{200 \cdot 140}{280}) \\
+               &= 120 - 100 \\
+               &= 20.
+\end{align*}
+
+Simillary we can assume that:
+$$ 
+   U_{L,nonsmoker} = 30 - \dfrac{100 \cdot 90}{315} = 1.429
+$$
+
+To calculate $V_{L, smoker}$ we do impose the following equation:
+
+\begin{align*}
+  V_{L, smoker} &= \dfrac{n_{CHD, smoker} \cdot n_{No CHD, smoker} \cdot d_{smoker} \cdot (n_{smoker} - d_{smoker})}{n_{smoker}^2 \cdot (n_{smoker} - 1)}  \\
+                &= \dfrac{200 \cdot 80 \cdot 140 \cdot (280 - 140)}{280^2 \cdot (280 - 1)} \\
+                &= 14.337.
+\end{align*}
+
+$V_{L, Non-smoker}$ can be calculated via:
+
+\begin{align*}
+  V_{L, non-smoker} &= \dfrac{90 \cdot 225 \cdot 100 (315 - 100)}{315^2 \cdot (315 -1)} \\
+                    &= 13.974.
+\end{align*}
+
+Now plugging in the calculated values into $W_S$ gives:
+
+$$
+  W_S = \dfrac{(20 + 1.429)^2}{14.337 + 13.974} = 16.22 \sim \chi(1)^2
+$$
+
+Using this result we arrive at a approximated p-value of $5e^{-}5$
+
+
+\newpage
+
+# Exercise 4:
+_Consider two groups with sizes $n1 = n2 = 100$ from a population of size $n = n1 +n2$. Suppose
+that the true survival times of the first group are distributed as $T_1 \sim \mathcal{WB}(3, 0.928)$ and that the second group has true survival times $T2$ with hazard rate $h_2(t) = 3t^2$. For both groups
+we assume that censoring times are independent and identically distributed. To begin with,
+execute the command `set.seed(1234)`._
+
+## (a)
+_Generate right censored survival times for both groups separately. Assume that the
+censoring times in both groups are exponentially distributed with parameter $\lambda = 2=3$.
+Use the inverse transform sampling method (exercise 5, study sheet 1) to generate true
+survival times of group `2`. Combine your data (`time` = observed survival times, `delta`
+= censoring indicator, `group` = group membership) into a data frame._
+
+## Answer:
+
+```{r ex4_a, echo=F}
+set.seed(1234)
+cens <- rexp(n=200,rate=2/3)
+time1 <- rweibull(n=100,shape=3,scale=1/0.928)
+time2 <- (-log(1-runif(n=100)))^(1/3)
+time <- c(time1,time2)
+delta <- 1*(time<=cens)
+time <- time*(time<=cens)+cens*(time>cens)
+group <- c(rep(1,length(time1)),rep(2,length(time2)))
+data <- data.frame(cbind(time,delta,group))
+head(data)
+```
+
+## (b)
+_Use a two-sample test of your choice to test whether the survivor functions of both
+groups are identical. Give an interpretation of the test result $(\alpha = 0.05)$_
+
+## Answer:
+```{r ex4_b, echo=F}
+(log.rank <- survdiff(Surv(time,delta) ~ group, data=data, rho=0))
+(wilcoxon <- survdiff(Surv(time,delta) ~ group, data=data, rho=1))
+sum(delta)
+```
+
+## (c)
+_Use a one-sample test of your choice to test whether the distribution of the survival times
+T of the whole population are distributed as $T \sim \mathcal{WB}(3, 0.928)$. Give an interpretation
+of the test result  $(\alpha = 0.05)$._
+
+## Answer:
+```{r ex4_c, echo=F}
+log.rank2 <- survdiff(Surv(time,delta) ~ offset(exp(-(0.928*time)^3)),data=data, rho=0)
+log.rank2
+wilcoxon2 <- survdiff(Surv(time,delta) ~ offset(exp(-(0.928*time)^3)),data=data, rho=1)
+wilcoxon2
+```
+
+
+## (d)
+_Assume that the theoretical event times of the whole population are distributed as
+$T \sim \mathcal{WB}(3, 1)$. Compute the Kaplan-Meier estimator, the theoretical survivor function
+and the empirical survivor function for the whole population and visualise them in a
+single plot. How do the results obtained in (c) change if the empirical survivor function
+is used as an offset?_
+
+## Answer:
+```{r ex4_d, echo=F}
+emp.Survival <- rep(1,nrow(data))
+for(i in 1:(nrow(data)-1))
+{
+  emp.Survival[i+1] <- (nrow(data) - i)/nrow(data)
+}
+kaplan.meier <- survfit(Surv(time,delta) ~ 1,data=data,conf.type="none")
+head(data)
+plot(kaplan.meier,mark.time=F,xlab="time",ylab="Survival")
+lines(sort(data$time),emp.Survival,type="s",col=2)
+lines(sort(data$time),1-pweibull(sort(data$time),shape=3, scale=1),type="l",col=4)
+legend("topright",c("Kaplan-Meier","Empirical","Theoretical"),lty=1,
+       col=c(1,2,4),bg="white")
+log.rank3 <- survdiff(Surv(time,delta) ~ offset(emp.Survival),data=data, rho=0)
+log.rank3
+log.rank4 <- survdiff(Surv(time,delta) ~ offset(exp(-(1*time)^3)),data=data, rho=0)
+log.rank4
+```
+
+
+## (e)
+_For group 2, compute the mean and median lifetime and the probability to survive longer
+than the mean and median lifetime. Carry out calculations for both the theoretical data
+and the censored data._
+
+## Answer:
+
+### Mean:
+```{r ex4_e, echo=F}
+data2 <- data[which(data$group==2),]
+mean.dat <- mean(data2$time)
+cat("Empirical:", mean.dat)
+mean.th <- gamma(1+1/3)
+cat("Theoretical:", mean.th)
+mean.km <- 0.9018
+cat("Kaplan-Meier:", mean.km)
+```
+
+### Median:
+```{r ex4_e2, echo=F}
+median.dat <- median(data2$time)
+cat("Empirical:", median.dat)
+median.th <- log(2)^(1/3)         # [log(2)^(1/alpha)] / lambda
+cat("Theoretical:", median.th)
+median.km <- 0.9390
+cat("Kaplan-Meier:", median.km)
+```
+
+### Survival times:
+```{r ex4_e3, echo=F}
+## Theoretical
+survival.mean.th   <- 1 - pweibull(q=mean.th,shape=3,scale=1)
+survival.median.th <- 1 - pweibull(q=median.th,shape=3,scale=1)
+cat("Theoretical survival times")
+cat("Mean:", survival.mean.th)
+cat("Median:", survival.median.th)
+
+## Empirical estimator
+kaplan.meier2        <- survfit(Surv(time,delta)~1,data=data2)
+survival.mean.dat   <- kaplan.meier2$surv[max(which(kaplan.meier2$time<=mean.dat))]
+survival.median.dat <- kaplan.meier2$surv[max(which(kaplan.meier2$time<=median.dat))]
+cat("Empirical estimator")
+cat("Mean:", survival.mean.dat)
+cat("Median:", survival.median.dat)
+## Kaplan-Meier
+survival.mean.km   <- kaplan.meier2$surv[max(which(kaplan.meier2$time<=mean.km))]
+survival.median.km <- kaplan.meier2$surv[max(which(kaplan.meier2$time<=median.km))]
+cat("Kaplan-Meier")
+cat("Mean:", survival.mean.km)
+cat("Median:", survival.median.km)
+```
+
+
+
+
+
+
+
+
+
+
+
+
