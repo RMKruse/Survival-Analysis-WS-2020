@@ -1,0 +1,203 @@
+---
+site: bookdown::bookdown_site
+output:
+  html_document:
+    df_print: paged
+  bookdown::pdf_book:
+    keep_tex: yes
+  bookdown::gitbook:
+    lib_dir: book_assets
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+
+```
+
+# Analysis of Time-to-Event Data: Study Sheet 7, 
+# Submission by: René-Marcel Kruse 
+
+# Exercise 1:
+_Show that, under the Cox model, the survival function is $$S(t, x_i) = [S_0(t)]^{exp(x^T \beta)},$$ where $S_0(t)$ denotes the baseline survival function._
+
+## Answer:
+We know that we can reformulate  $h(t, x_i)$ such that
+$$
+  h(t, x_i) = h(t, x_0) \cdot exp(x_i ^T \beta)
+$$
+Now imposing that we are in an arbitrary t denotetd as $a$ we can show that
+\begin{align*}
+  \int^{t}_{0} h(a, x_i) da 
+    &= \int^{t}_{0} h(a, x_0) da \cdot exp(x_i ^T \beta) \\
+    &= ( \int^{t}_{0} h(a, x_0) da ) \cdot exp(x_i ^T \beta) \\
+    &= H(t, x_i) \\
+    &= H(t, x_0) \cdot exp(x_i ^T \beta) \\
+    &= exp(-H(t, x_0) \cdot exp(x_i ^T \beta) ) \cdot exp(x_i ^T \beta) 
+\end{align*}
+
+We therefore can show that
+\begin{align*}
+  S(t, x_i) 
+    &= exp(- H(t, x_0)) \cdot exp(x_i ^T \beta) \\
+    &= S_0 (t) ^{exp(x^T \beta)}
+\end{align*}
+
+# Exercise 2:
+_The data frame `tongue`, which is given in the *R* package `KMsurv`, contains death times (in weeks) of patients with cancer of the tongue. 
+The variable `type` gives information whether the tumour had an aneuploid (abnormal) or diploid (normal) DNA profile. 
+Make use of `help(tongue)` to become acquainted with the data set._
+
+```{r setup2, include=FALSE}
+options(width=100)
+library(survival)
+library(KMsurv) 
+data("tongue") 
+```
+
+## (a)
+_Fit a Cox proportional hazards regression model to this data set to estimate the impact of the variable tumor type (`type`) on the survival time. Use the function `coxph()` from the R package `survival`._
+
+### Answer:
+```{r setup2a, include=FALSE}
+m2a <- coxph(Surv(time,delta) ~ as.factor(type),data=tongue)
+```
+```{r answer2a, include=FALSE}
+summary(m2a)
+```
+
+
+## (b)
+_Compare your results obtained in (a) with the results you obtain when fitting a parametric Weibull-*AFT* model to these data._
+
+### Answer:
+The *AFT*-Model
+```{r 2b_answer1}
+m2b <- survreg(Surv(time,delta) ~ as.factor(type),
+                         dist="weibull",data=tongue)
+summary(m2b)
+```
+Comparing the results of the *Cox* and of the *AFT* models
+```{r 2b_answer2, echo=FALSE}
+m2a$coeff
+-m2b$coeff["as.factor(type)2"]/m2b$scale
+
+exp(m2a$coeff)
+exp(-m2b$coeff["as.factor(type)2"]/m2b$scale)
+```
+
+
+## (c)
+_Use different methods for tie handling (see the option `ties` in the function `coxph()`), to test whether there is a significant effect of the tumor type._
+
+### Answer:
+```{r 2c_answer, echo=FALSE}
+(m2c_efron <- coxph(Surv(time,delta) ~ as.factor(type), ties ="efron",data=tongue))
+
+(m2c_breslow <- coxph(Surv(time,delta) ~ as.factor(type), ties="breslow",data=tongue))
+
+(m2c_exact <- coxph(Surv(time,delta) ~ as.factor(type), ties="exact",data=tongue))
+
+exp(unlist(lapply(list(m2c_efron,m2c_breslow,m2c_exact), function(m) coef(m)[1])))
+```
+
+
+# Exercise 3:
+_Given data $D_ =\{ f(t_i, \delta_i, x_i), i = 1, \dots , n \}$ and a non-informative (random) censoring scheme, the likelihood for the Cox model is given by_
+$$
+  \mathcal{L}(\beta, h_0) = \prod_{i=1}^{n} h(t_i, x_i)^{\delta_i} S(t_i, x_i)
+$$
+_with $h(t, x_i) = h_0(t) exp(x_i^T \beta)$ and $S(t, x_i) = exp(−H_0(t) exp(x_i^T \beta))$, where $H_0(t)= \int_{0}^{t}h_0(u) du$ denotes the cumulative baseline hazard._
+
+## (a)
+_ Show that the likelihood can be written as
+$$
+  \mathcal{L}(\beta, h_0) = \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} exp(- exp(\eta_i)) (\dfrac{h_0(t_i)}{H_0(t_i)})^{\delta_i}
+$$
+where $\eta_i = ln(H_0(t_i)) + x_i^T \beta$_
+
+### Answer:
+We do know from the task before, that we can rewrite the first expression for Cox models. This allows us to reformulate the Likelihood as follows
+
+\begin{align*}
+  \mathcal{L}(\beta, h_0) 
+    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot exp(x_i^T \beta)]^{\delta_i} \cdot S(t_i, x_i)\\
+    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot exp(x_i^T \beta)]^{\delta_i} \cdot ( exp(- H_0(t_i) ) \cdot exp(x_i^T \beta))\\
+    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot \dfrac{exp(ln(H_0(t_i)))}{H_0(t_i)} \cdot exp(x_i^T \beta)]^{\delta_i} \cdot exp( - exp(ln(H_0(t_i))) \cdot exp(x_i^T \beta)) \\
+    &= \prod_{i=1}^{n}[ \dfrac{h_0(t_i)}{H_0(t_i)} \cdot exp(\eta_i) ]^{\delta_i} \cdot exp( - exp(\eta_i)) \\
+    &= \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp( - exp(\eta_i)) \cdot [ \dfrac{h_0(t_i)}{H_0(t_i)}]^{\delta_i}
+\end{align*}
+
+
+## (b)
+_Assume that the censoring indicator $\delta_i$ is Poisson distributed with parameter $\mu_i = exp(\eta_i)$, that is, $\delta_i \sim P(\mu_i)$. Specify the likelihood for this log-linear Poisson model._
+
+### Answer:
+Given that $\delta_i \sim P(\mu_i)$ where $\mu_i = exp(\eta_i)$ we can formulate $P$ of $\delta_i$ as:
+$$
+  P(\delta_i) = \dfrac{\mu_i^{\delta_i} \cdot exp(- \mu_i) }{(\delta_i)!}
+$$
+
+Using this we are able to formulate the conditional Likelihood as follows
+
+\begin{align*}
+  \mathcal{L}(\beta | x_i, \delta_i) 
+    &= \prod_{i=1}^{n} \dfrac{\mu_i^{\delta_i} \cdot exp(- \mu_i) }{(\delta_i)!} \\
+    &= \prod_{i=1}^{n} \mu_i^{\delta_i} \cdot exp(- \mu_i) \\
+    &= \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp( - exp(\eta_i)) \\
+    & \text{Insert:} \\
+    &= \prod_{i=1}^{n} exp(x_i^T \beta + ln(H_0(t_i)))^{\delta_i} \cdot exp(x_i^T \beta + ln(H_0(t_i))
+\end{align*}
+
+
+## (c)
+_Making use of the results obtained in (a) and (b) show that the likelihood of the Cox model is proportional to the likelihood of the log-linear Poisson model with offset $log(H_0(t_i))$._
+
+### Answer:
+The Likelihood-model is to be formulated as follows
+$$
+  \mathcal{L} (\beta | h_0) = \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp(- exp(\eta_i)) \cdot \left[ \dfrac{h_0(t_i)}{H_0(t_i)} \right]^{\delta_i}
+$$
+
+The *poisson*-model is given by
+$$
+  \mathcal{L} (\beta | x_i, H_0) = \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp( -exp(\eta_i))
+$$
+
+The *Cox*-Likelihood-model is given by
+$$
+  \mathcal{L}_{Cox} = \prod_{i=1}^{n} \left( \dfrac{h_0(t_i)}{H_0(t_i)} \right)^{\delta_i} \cdot \mathcal{L}_{poisson}
+$$
+
+
+## (d)
+_Consider the special case of a Cox model with constant baseline hazard rate $h0(t) = h$. Show that, for purposes of conducting statistical inference for this model, one can use the log-linear Poisson model with offset $log(t_i)$._
+
+### Answer:
+
+
+
+## (e)
+_Recall the data file `melanoma.dat` that has been analysed previously. Fit a Cox model with constant baseline hazard rate to these data, using the function `glm()`. Compare your results to the results obtained when using the `survreg()` function._
+
+### Answer:
+
+# Exercise 4:
+## (a)
+## Answer:
+## (b)
+## Answer:
+## (c)
+## Answer:
+
+
+# Exercise 5:
+## (a)
+## Answer:
+## (b)
+## Answer:
+## (c)
+## Answer:
+## (d)
+## Answer:
