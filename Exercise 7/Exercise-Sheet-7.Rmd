@@ -1,13 +1,13 @@
 ---
 site: bookdown::bookdown_site
 output:
-  html_document:
-    df_print: paged
+  pdf_document: default
   bookdown::pdf_book:
     keep_tex: yes
   bookdown::gitbook:
     lib_dir: book_assets
-  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -63,7 +63,7 @@ _Fit a Cox proportional hazards regression model to this data set to estimate th
 ```{r setup2a, include=FALSE}
 m2a <- coxph(Surv(time,delta) ~ as.factor(type),data=tongue)
 ```
-```{r answer2a, include=FALSE}
+```{r answer2a, echo=FALSE}
 summary(m2a)
 ```
 
@@ -108,25 +108,25 @@ _Given data $D_ =\{ f(t_i, \delta_i, x_i), i = 1, \dots , n \}$ and a non-inform
 $$
   \mathcal{L}(\beta, h_0) = \prod_{i=1}^{n} h(t_i, x_i)^{\delta_i} S(t_i, x_i)
 $$
-_with $h(t, x_i) = h_0(t) exp(x_i^T \beta)$ and $S(t, x_i) = exp(−H_0(t) exp(x_i^T \beta))$, where $H_0(t)= \int_{0}^{t}h_0(u) du$ denotes the cumulative baseline hazard._
+_with $h(t, x_i)=h_0(t)exp(x_i^T \beta)$ and $S(t, x_i)=exp(-H_0(t)exp(x_i^T \beta))$, where $H_0(t)=\int_{0}^{t}h_0(u)du$ denotes the cumulative baseline hazard._
 
 ## (a)
-_ Show that the likelihood can be written as
+_Show that the likelihood can be written as_
 $$
-  \mathcal{L}(\beta, h_0) = \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} exp(- exp(\eta_i)) (\dfrac{h_0(t_i)}{H_0(t_i)})^{\delta_i}
+  \mathcal{L}(\beta, h_0) = \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} exp(- exp(\eta_i)) \left( \dfrac{h_0(t_i)}{H_0(t_i)} \right) ^{\delta_i}
 $$
-where $\eta_i = ln(H_0(t_i)) + x_i^T \beta$_
+_where $\eta_i = ln(H_0(t_i)) + x_i^T \beta$_
 
 ### Answer:
 We do know from the task before, that we can rewrite the first expression for Cox models. This allows us to reformulate the Likelihood as follows
 
 \begin{align*}
   \mathcal{L}(\beta, h_0) 
-    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot exp(x_i^T \beta)]^{\delta_i} \cdot S(t_i, x_i)\\
-    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot exp(x_i^T \beta)]^{\delta_i} \cdot ( exp(- H_0(t_i) ) \cdot exp(x_i^T \beta))\\
-    &= \prod_{i=1}^{n}[ h_0(t_i) \cdot \dfrac{exp(ln(H_0(t_i)))}{H_0(t_i)} \cdot exp(x_i^T \beta)]^{\delta_i} \cdot exp( - exp(ln(H_0(t_i))) \cdot exp(x_i^T \beta)) \\
-    &= \prod_{i=1}^{n}[ \dfrac{h_0(t_i)}{H_0(t_i)} \cdot exp(\eta_i) ]^{\delta_i} \cdot exp( - exp(\eta_i)) \\
-    &= \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp( - exp(\eta_i)) \cdot [ \dfrac{h_0(t_i)}{H_0(t_i)}]^{\delta_i}
+    &= \prod_{i=1}^{n}\left[ h_0(t_i) \cdot exp(x_i^T \beta) \right]^{\delta_i} \cdot S(t_i, x_i)\\
+    &= \prod_{i=1}^{n}\left[ h_0(t_i) \cdot exp(x_i^T \beta)\right]^{\delta_i} \cdot ( exp(- H_0(t_i) ) \cdot exp(x_i^T \beta))\\
+    &= \prod_{i=1}^{n} \left[ h_0(t_i) \cdot \dfrac{exp(ln(H_0(t_i)))}{H_0(t_i)} \cdot exp(x_i^T \beta) \right] ^{\delta_i} \cdot exp( - exp(ln(H_0(t_i))) \cdot exp(x_i^T \beta)) \\
+    &= \prod_{i=1}^{n}\left[ \dfrac{h_0(t_i)}{H_0(t_i)} \cdot exp(\eta_i) \right]^{\delta_i} \cdot exp( - exp(\eta_i)) \\
+    &= \prod_{i=1}^{n} exp(\eta_i)^{\delta_i} \cdot exp( - exp(\eta_i)) \cdot \left[ \dfrac{h_0(t_i)}{H_0(t_i)}\right]^{\delta_i}
 \end{align*}
 
 
@@ -175,29 +175,228 @@ $$
 _Consider the special case of a Cox model with constant baseline hazard rate $h0(t) = h$. Show that, for purposes of conducting statistical inference for this model, one can use the log-linear Poisson model with offset $log(t_i)$._
 
 ### Answer:
+With a given *Cox*-Likelihood give as
+$$
+  \mathcal{L}_{Cox} = \prod_{i=1}^{n} \left( \dfrac{h_0(t_i)}{H_0(t_i)} \right)^{\delta_i} \cdot \mathcal{L}_{poisson}
+$$
+And we do know that $H_0(t_i)$ can be reformulated as follows
+$$
+  H_0(t_i) = \int_{0}^{t_i} h_0(a) \cdot da = \int_{0}^{t_i}h \cdot da = h \cdot t_i
+$$
+This in turn allows as to reformulate the *Cox*-Likelihood such that
+$$
+  \mathcal{L}_{Cox} = \prod_{i=1}^{n} \left( \dfrac{h_0(t_i)}{H_0(t_i)} \right)^{\delta_i} \cdot \mathcal{L}_{poisson} = \prod_{i=1}^{n} \left( \dfrac{h}{h \cdot t_i} \right)^{\delta_i} \cdot \mathcal{L}_{poisson} = \prod_{i=1}^{n} \left( \dfrac{1}{ t_i} \right)^{\delta_i} \cdot \mathcal{L}_{poisson} 
+$$
 
+$$
+  \mathcal{l}_{Cox} = \sum_{i=1}^{n} \delta_{i} \cdot ln\left(  \dfrac{1}{t_i}  \right) + \mathcal{l}_{poisson}
+$$
+
+We can now see that maximizing both expressions, we see that both approaches offer the result, i.e.
+$$
+  \underset{\hat{\beta}}{\operatorname{argmax}} \mathcal{l}_{Cox} \hat{=} \underset{\hat{\beta}}{\operatorname{argmax}} \mathcal{l}_{poisson} 
+$$
 
 
 ## (e)
 _Recall the data file `melanoma.dat` that has been analysed previously. Fit a Cox model with constant baseline hazard rate to these data, using the function `glm()`. Compare your results to the results obtained when using the `survreg()` function._
+```{r 3e_setup, include=FALSE}
+data <- read.csv("C:/Git/Survival-Analysis-WS-2020/Exercise 3/melanoma.dat", sep="")
+library(survival)
+delta <- 1*(data$state==1)
+```
 
 ### Answer:
 
-# Exercise 4:
-## (a)
-## Answer:
-## (b)
-## Answer:
-## (c)
-## Answer:
+```{r 3e_answer1}
+# GLM
+m3eGLM1 <- glm(delta ~ 1, family=poisson,offset = log(time), data = data)
+m3eGLM2 <- glm(delta ~ 1 + sex + thick + ulcer + age, 
+               family=poisson,offset=log(time), data = data)
+# Survreg
+m3eSR1 <- survreg(Surv(time,delta) ~ 1,dist="exponential", data = data)
+m3eSR2 <- survreg(Surv(time,delta)~1 + sex + thick + ulcer + age,
+                  dist="exponential", data = data)
+```
 
+Comparison of the $\lambda$ and the coefficients
+```{r 3e_answer2, echo=FALSE}
+# lambdas
+exp(m3eGLM1$coef)
+exp(m3eSR1$coef)
+
+# Coefficients
+exp(m3eGLM2$coef)
+exp(m3eSR2$coef)
+```
+
+
+# Exercise 4:
+_The data frame kidtran, which is given in the *R* package `KMsurv`, contains time to death of 863 kidney transplant patients. All patients had their transplant performed at The Ohio State University Transplant Center during the period 1982-1992. The maximum follow-up time for this study was 9.47 years. Patients were censored if they moved from Columbus (lost-to follow-up) or if they were alive on June 30, 1992. In the sample, there were 432 white males,  92 black males, 280 white females, and 59 black females. Patient ages at transplant ranged from 9.5 months to 74.5 years with a mean age of 42.8 years. Make use of `help(kidtran)` to become acquainted with the data set_
+```{r 4setup, include=FALSE}
+
+library(KMsurv)
+data(kidtran, package = "KMsurv")
+kidtran$gender <- factor(kidtran$gender, labels=c("male","female"))
+kidtran$race   <- factor(kidtran$race, labels=c("white","black"))
+
+```
+## (a)
+_Estimate a Cox model with the covariates `gender`, `race`, the interaction `gender * race` and `age`. Compute the hazard ratio of (i) a 40 year old black male, (ii) a 40 year old white male, and (iii) a 40 year old black female, compared to a 40 year old white female._
+```{r 4asetup}
+m4a <- coxph(Surv(time,delta) ~ gender + race + gender:race + age,
+                    data=kidtran)
+```
+### (i) Answer:
+
+```{r 4ai, echo=FALSE}
+
+b.gender <- m4a$coefficients[1]
+b.race <- m4a$coefficients[2]
+b.age <- m4a$coefficients[3]
+b.interact <- m4a$coefficients[4]
+r.male.black <- exp(b.race + b.age*40)
+r.male.white <- exp(b.age*40)
+
+cat(r.male.black)
+
+```
+### (ii) Answer:
+```{r 4aii, echo=FALSE}
+
+cat(r.male.white)
+
+```
+### (iii) Answer:
+```{r 4aiii, echo=FALSE}
+
+predict(m4a, newdata=data.frame(gender="male",race="white",age=40),type="risk") /
+  predict(m4a, newdata=data.frame(gender="female",race="white",age=40),type="risk") 
+
+
+```
+
+## (b)
+_Start with a Cox model containing age as the only covariate. Use the Akaike Information Criterion (AIC), which is implemented in the function `AIC()`, to check whether `gender`, `race` and the interaction `gender * race` should also be included in the model._
+
+
+### Answer:
+AIC Values of the considered models
+```{r 4b1, echo=FALSE}
+
+AIC(coxph(Surv(time,delta) ~ age, data=kidtran))
+AIC(coxph(Surv(time,delta) ~ age + race, data=kidtran))
+AIC(coxph(Surv(time,delta) ~ age + gender, data=kidtran))
+AIC(coxph(Surv(time,delta) ~ age + gender + race, data=kidtran))
+```
+
+Best model
+```{r 4b2, echo=FALSE}
+
+summary(coxph(Surv(time,delta) ~ age, data=kidtran))
+
+```
+
+## (c)
+_Use the function `basehaz()` in the *R* package `survival()` to plot the cumulative baseline hazard for the best model (according to the AIC) and the null model (containing no covariates). Compare the results with the results obtained when using the option `centered=FALSE`._
+
+### Answer:
+```{r 4c, echo=FALSE}
+coxkidney.age <- coxph(Surv(time,delta) ~ age, data=kidtran)
+coxkidney.age$means
+coxkidney.age$coef
+coxkidney.base1 <- basehaz(coxkidney.age, centered=TRUE)    # x=mean(x)
+coxkidney.base2 <- basehaz(coxkidney.age, centered=FALSE)   # x=0
+plot(coxkidney.base1$time, coxkidney.base1$hazard, type="s", xlab="time",
+     ylab="",main="Cumulative baseline hazard")
+lines(coxkidney.base2$time, coxkidney.base2$hazard, type="s", col=2)
+legend("topleft", c("Centered", "Null model"), col=1:2, lty=1)
+``` 
 
 # Exercise 5:
+
 ## (a)
-## Answer:
+_Recall the inverse transform sampling method for generating random numbers from a distribution with invertible cumulative hazard function H(t) (see exercise 5 of study sheet 1). Generalize the method developed in exercise 5 (a) to build up a scheme for generating survival times from a Cox model with given and invertible cumulative baseline hazard rate $H_0(t)$._
+
+### Answer:
+```{r 5a, include=FALSE}
+sims <- function(n=100,runs=50,beta=0.5) {
+  x <- runif(n)
+  time <- matrix(0, n, runs)
+  delta <- matrix(0, n, runs)
+  beta.hat <- rep(NA,runs)
+  for(i in 1:runs) { 
+    time[,i] <- sqrt(-2*log(1- runif(n))*exp(-beta*x))
+    c <- runif(n, 0, 5)
+    delta[,i] <- 1*(time[,i] <= c)
+    time[,i] <- pmin(time[,i], c)    
+    beta.hat[i] <- coef(coxph(Surv(time[,i],delta[,i]) ~ x))
+  }
+  result <- list(beta.hat=beta.hat,
+                 x=x,
+                 time=time,
+                 delta=delta)
+  return(result)
+}
+
+```
 ## (b)
-## Answer:
+_Simulate r = 100 samples with sizes n = 50 from a Cox model with hazard rate_
+$$
+  h(t; x) = t \cdot exp \left( \beta x \right)
+$$
+_and $\beta = 0.5$. In order to do this, simulate the covariate $x$ from a uniform distribution on the interval $[0,1]$ and use these values in the r = 100 samples. Simulate the censoring times for the r = 100 samples from a uniform distribution on the interval $[0,5]$._
+
+### Answer:
+```{r 5b}
+
+simulations <- sims(50, 100, 0.5)
+mean(simulations$beta.hat)
+mean(simulations$beta.hat) - 0.5
+```
+
+
 ## (c)
-## Answer:
+_The bias of the estimator $\hat{\beta}$ is defined as $Bias(\hat{\beta})=E(\hat{\beta})-\beta$. For the analysis of simulation studies one considers frequently the empirical bias._
+$$
+  \widehat{Bias} \left( \hat{\beta} \right) = \dfrac{1}{r} \sum_{k=1}^{r} \hat{\beta}^{(k)} - \beta,
+$$
+_where $\hat{\beta}^{(k)}$ denotes the estimator arising from the $kth$ simulation run. Compute the empirical bias for $\beta$ and draw a histogram (together with a kernel density estimate) of the 100 estimated $\hat{\beta}^{(k)} (k = 1, \dots, r)$_
+
+```{r 5c_setup, echo=FALSE}
+n <- c(50,100,250,500)
+beta.hat <- sapply(n, function(n) sims(n=n,runs=100,beta=0.5)$beta.hat)
+apply(beta.hat,2,mean)
+(bias.hat <- apply(beta.hat,2,mean) - 0.5)
+```
+
+### Answer:
+```{r 5c_answer, echo=FALSE}
+plot(n,bias.hat,type="l",col="blue",main="Empirical Bias",ylab="")
+points(n,bias.hat,col=2,pch=20)
+abline(h=0)
+```
+
+
 ## (d)
-## Answer:
+_Repeat the steps (b) and (c) using sample sizes n = 100, n = 250 and n = 500._
+
+### Answer:
+
+```{r 5d_answer, echo=FALSE}
+par(mfrow=c(2,2))
+hist(beta.hat[,1],breaks=20,xlim =c(-1,2.5),freq=F)
+lines(density(beta.hat[,1]),col=2)
+abline(v=0.5,col=3)
+hist(beta.hat[,2],breaks=20,xlim =c(-1,2.5),freq=F)
+lines(density(beta.hat[,2]),col=2)
+abline(v=0.5,col=3)
+hist(beta.hat[,3],breaks=20,xlim =c(-1,2.5),freq=F)
+lines(density(beta.hat[,3]),col=2)
+abline(v=0.5,col=3)
+hist(beta.hat[,4],breaks=20,xlim =c(-1,2.5),freq=F)
+lines(density(beta.hat[,4]),col=2)
+abline(v=0.5,col=3)
+
+```
+
