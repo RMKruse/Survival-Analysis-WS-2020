@@ -1,0 +1,337 @@
+---
+site: bookdown::bookdown_site
+output:
+  pdf_document: default
+  bookdown::pdf_book:
+    keep_tex: yes
+  bookdown::gitbook:
+    lib_dir: book_assets
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+library(survival)
+```
+
+# Analysis of Time-to-Event Data: Study Sheet 8, 
+# Submission by: René-Marcel Kruse 
+
+# Exercise 1:
+_Let T denote survival time with survival function $S_T(t)$. Simulate a sample of size $n = 1500$ from a Cox model with hazard rate._
+$$
+  h(t; x) = t \cdot exp \{ 0.5 x \}. 
+$$
+_Use the inverse transform sampling method developed in exercise 5, study sheet 7. Simulate the covariate $x_1$ from a uniform distribution on the interval `[-3; 3]` and the censoring times from a uniform distribution on the interval `[0; 6]`. Plot the Cox-Snell residuals against the cumulative hazard rate to check the overall goodness-of-fit of the fitted model. For the derivation of the distribution of the Cox-Snell residuals use the distribution of $Y = - ln(S_T (T)) \sim E(\lambda = 1)$_
+
+## Answer:
+
+### Draw samples:
+
+```{r ex1_paras}
+x <- runif(1500, -3, 3)
+censortimes <- runif(1500, 0, 6)
+u <- runif(1500)
+``` 
+
+### Insverse sampling method:
+
+```{r ex1_inv}
+samples <- sqrt(-2 * log(1 - u) * exp(-0.5 * x))
+``` 
+
+### Event times and censoring:
+
+```{r ex1_event}
+time <- pmin(samples, censortimes)
+delta <- (samples <= censortimes) * 1
+``` 
+
+### Cox Model:
+```{r ex1_cox}
+coxmodel <- coxph(Surv(time, delta) ~ x)
+summary(coxmodel)
+``` 
+
+### Cox-Snell residuals:
+
+```{r ex1_resids, echo=FALSE}
+res.cs <- delta - residuals(coxmodel, type="martingale")
+res.surv <- survfit(Surv(res.cs,delta) ~ 1)
+res.cumhaz <- -log(res.surv$surv)
+
+plot(res.surv$time,res.cumhaz,xlab="Residuals",ylab="Cum. Hazard",
+     type="s", col=2, main="Cox-Snell Residuals Model fit")
+lines(res.surv$time, res.surv$time, lty=4)
+``` 
+
+# Exercise 2:
+_Simulate a sample of size $n = 1500$ from a Cox model with hazard rate_
+
+  $$
+  \text{(a)} \quad  h(t; x) = t \cdot exp \{ sin(x_1) + 0.5x_2 \}
+  $$
+
+  $$
+  \text{(b)} \quad  h(t; x) = t \cdot exp \{ x_1^2 + 0.5x_2 \}
+  $$
+
+_Use the inverse transform sampling method developed in exercise 5, study sheet 7. Simulate the covariate $x_1$ and $x_2$ from a uniform distribution on the interval `[-3; 3]` and the censoring times from a uniform distribution on the interval `[0; 6]`. Obtain the martingale residuals and deviance residuals and check whether one can use them to make conclusions about the functional form of the covariate $x_1$. The `loess()` function can be used to smooth the residuals._
+
+## Answer:
+
+```{r ex21_paras}
+x1 <- runif(1500, -3, 3)
+x2 <- runif(1500, -3, 3)
+censortimes <- runif(1500, 0, 6)
+u <- runif(1500)
+``` 
+
+### (a):
+
+### Insverse sampling method:
+
+```{r ex21_inv}
+samples <- sqrt(-2 * log(u) * exp(-sin(x1)-0.5*x2))
+``` 
+
+### Event times and censoring:
+
+```{r ex21_event}
+time <- pmin(samples, censortimes)
+delta <- (samples <= censortimes) * 1
+``` 
+
+### Cox Model:
+```{r ex21_cox}
+coxmodel <- coxph(Surv(time, delta) ~ x2)
+summary(coxmodel)
+``` 
+
+### Martingale Residuals:
+
+```{r ex21_mart}
+m.residuals <- residuals(coxmodel, type="martingale")
+m.loess1 <- loess(m.residuals ~ x1, degree=1)
+m.loess2 <- loess(m.residuals ~ x1, degree=2)
+``` 
+
+```{r ex211_mart_plot, echo=FALSE}
+plot(x1, m.residuals, pch=".", col=1, main="Martingale residuals", ylim = c(-6, 6))
+```
+
+```{r ex212_mart_plot, echo=FALSE}
+par(mfrow=c(1,2))
+plot(x1, predict(m.loess1), ylim= c(-6, 6), 
+     ylab="m.residuals", main="Fit with loess degree=1")
+points(x1, m.residuals, pch=".", col=3)
+plot(x1, predict(m.loess2), ylim= c(-6, 6), 
+     ylab="m.residuals", main="Fit with loess degree=2")
+points(x1, m.residuals, pch=".", col=2)
+``` 
+
+### Deviance Residuals:
+
+```{r ex21_devi}
+d.residuals <- residuals(coxmodel, type="deviance")
+d.loess <- loess(d.residuals ~ x1, degree=2)
+``` 
+
+```{r ex21_devi_plot, echo=FALSE}
+par(mfrow=c(1,2))
+plot(x1, d.residuals, pch=".", col=2, main="Deviance residuals", ylim= c(-6, 6))
+plot(x1, predict(d.loess), ylim= c(-6, 6),
+     ylab="d.residuals", main="Fit with loess")
+points(x1, d.residuals, pch=".", col=2)
+``` 
+
+
+### (b):
+
+### Insverse sampling method:
+
+```{r ex22_inv}
+samples <- sqrt(-2 * log(u) * exp(- x1^2 - 0.5 * x2))
+``` 
+
+### Event times and censoring:
+
+```{r ex22_event}
+time <- pmin(samples, censortimes)
+delta <- (samples <= censortimes) * 1
+``` 
+
+### Cox Model:
+```{r ex22_cox}
+coxmodel <- coxph(Surv(time, delta) ~ x2)
+summary(coxmodel)
+``` 
+
+### Martingale Residuals:
+
+```{r ex22_mart}
+m.residuals <- residuals(coxmodel, type="martingale")
+m.loess1 <- loess(m.residuals ~ x1, degree=1)
+m.loess2 <- loess(m.residuals ~ x1, degree=2)
+``` 
+
+```{r ex221_mart_plot, echo=FALSE}
+plot(x1, m.residuals, pch=".", col=1, main="Martingale residuals", ylim = c(-6, 6))
+```
+
+```{r ex222_mart_plot, echo=FALSE}
+par(mfrow=c(1,2))
+plot(x1, predict(m.loess1), ylim= c(-6, 6), 
+     ylab="m.residuals", main="Fit with loess degree=1")
+points(x1, m.residuals, pch=".", col=3)
+plot(x1, predict(m.loess2), ylim= c(-6, 6), 
+     ylab="m.residuals", main="Fit with loess degree=2")
+points(x1, m.residuals, pch=".", col=2)
+``` 
+
+### Deviance Residuals:
+
+```{r ex22_devi}
+d.residuals <- residuals(coxmodel, type="deviance")
+d.loess <- loess(d.residuals ~ x1, degree=2)
+``` 
+
+```{r ex22_devi_plot, echo=FALSE}
+par(mfrow=c(1,2))
+plot(x1, d.residuals, pch=".", col=2, main="Deviance residuals", ylim= c(-6, 6))
+plot(x1, predict(d.loess), ylim= c(-6, 6),
+     ylab="d.residuals", main="Fit with loess")
+points(x1, d.residuals, pch=".", col=2)
+``` 
+
+# Exercise 3:
+
+_In the lectures, the martingale property has been stated as follows (see slide 7 of the set of slides "Refinements of the semiparametric proportional hazards model"):_
+$$
+  E[dM(t)|F_{t-}] = 0 \quad \text{for all }t.
+$$
+_Show that equation (1) is equivalent to_
+$$
+  E[M(t)|F_{s}] = M(s) \quad \text{for all }s.
+$$
+
+## Answer:
+
+We do know that $M(t)$ is defined as follows
+$$
+  M(t) = N(t) - \Delta(t)
+$$
+where as $N(t)$ represents a counting process and $\Delta(t)$ represents the cumulative intensity of the process itself.
+
+We can now employing the law of total expectations reformulate as follows
+
+\begin{align*}
+  E[M(t)|F_{s}] - M(s) &= E[M(t) -  M(s)|F_{s}]  \\
+                       &= E[\int_{s}^{t} dM(u) | F_s] \\
+                       &= \int_{s}^{t} E[d m(u) | F_s] \\
+                       &= \int_{s}^{t} E[ E[d M(u) | F_s, F_{u-}] | F_s ] \\
+                       &= \int_{s}^{t} E[ E[d M(u) | F_{u-}] | F_s ] \\
+                       &= 0
+\end{align*}
+
+# Exercise 4:
+
+_The file `resmelanoma.prn` that is available in the Stud.IP folder "Data" contains survival times from 30 resected melanoma patients (for a description of the data, see the file `resmelanomahelp.txt`).1 Let $ageg$ denote the age group with $ageg = 1$ if age $<$ 45 and $ageg = 2$ otherwise. Fit the survival times with an ageg-stratified Cox proportional hazards model with the covariates sex and treatment received._
+
+## Answer:
+```{r ex4, echo=FALSE}
+library(survival)
+data <- read.table("resmelanoma.prn",sep="")
+
+colnames(data) <- c("ID", "AGE", "SEX", "INI2",
+                    "INI3A", "INI3B", "INI4A", "TRT", "RTIME", "CRT", "STIME", "CST")
+head(data)
+
+data$AGEG <- 2*(data$AGE == 45 | data$AGE > 45)
+data$AGEG[data$AGEG == "0"] <- "1"
+head(data)
+
+
+CoxModel.Strat <- coxph(Surv(STIME,CST) ~ SEX + TRT + strata(AGEG), 
+                        data=data)
+summary(CoxModel.Strat)
+``` 
+
+
+# Exercise 5:
+_The file `prison.txt`, which is available in the Stud.IP folder "Data", contains data from an experimental study of recidivism of 432 male prisoners, who were observed for a year after being released from prison. Half of the prisoners were randomly given financial aid when they were released. The following table gives a description of the observed variables:_
+
+| Variable    |   Description                                                                                                        |
+|:------------|:---------------------------------------------------------------------------------------------------------------------|
+|week         |week of first arrest after release, or censoring time                                                                 |
+|arrest       |the event indicator, 1 = arrested , 0 = not                                                                           |
+|fin          |1 = received financial aid, 0 = not                                                                                   |
+|age          |in years at the time of release                                                                                       |
+|race         |1 = black, 0 = others                                                                                                 |
+|wexp         |1 = had full-time work experience, 0 = not                                                                            |
+|mar          |1 = married, 0 = not                                                                                                  |
+|paro         |1 = released on parole, 0 = not                                                                                       |
+|prio         |number of prior convictions                                                                                           |
+|educ         |codes 2 (grade 6 or less), 3 (grades 6 through 9), 4 (grades 10 and 11), 5 (grade 12), or 6 (some post-secondary)     |
+|emp1 - emp52 | 1 = employed in the corresponding week, 0 = not                                                                      |
+
+
+### (a):
+
+_Fit a Cox model to these data. Use backward selection, which is implemented in the function `stepAIC()` function from the R package MASS, to find the best model according to the Akaike Information Criterion (AIC)_
+
+```{r ex5a, echo=FALSE}
+prison <- read.table("prison.txt", header=TRUE)
+ex5a <- coxph(Surv(week, arrest) ~ fin + age + race + wexp + mar + paro + prio + as.factor(educ),
+            method="efron",data=prison)
+library(MASS)
+step.AIC<-stepAIC(ex5a,direction="both")
+summary(step.AIC)
+``` 
+
+
+### (b):
+
+_In the file prisonlong.txt each row corresponds to one observation per person per week. Fit a Cox model with the time-dependent variable employed to these data._
+
+```{r ex5b, echo=FALSE}
+prison.long <- read.table("prisonlong.txt", header=TRUE)
+
+(m2<-coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + mar, data=prison.long))
+
+(m3<-coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + mar + employed, data=prison.long))
+``` 
+
+
+### (c):
+
+_Create a variable employed.lag1 which should contain information whether the person was employed in the previous week. Again, fit a Cox model using the variable employed.lag1 instead to employed._
+
+```{r ex5c, echo=FALSE}
+lag1 <- function(x) c(0,head(x,n=-1))
+prison.long$employed.lag1 <- unlist(with(prison.long, tapply( employed, subject, lag1)))
+
+(m4<-coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + mar + employed.lag1,data=prison.long))
+``` 
+
+### (d):
+
+_How could you check the assumption of proportional hazards for all the variables of the best model found in (a) using interaction terms with time of observation?_
+
+```{r ex5d, echo = FALSE}
+
+(m.fin<- coxph(Surv(start, stop, arrest.time) ~ fin + fin:I(log(stop)) + age + prio + mar + employed, data=prison.long))
+
+(m.age<- coxph(Surv(start, stop, arrest.time) ~ fin + age + age:I(log(stop)) + prio + mar + employed, data=prison.long))
+
+(m.prio<- coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + prio:I(log(stop))+ mar + employed, data=prison.long))
+
+(m.mar<- coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + mar + mar:I(log(stop))  + employed, data=prison.long))
+
+(m.employed<- coxph(Surv(start, stop, arrest.time) ~ fin + age + prio + mar + employed + employed:I(log(stop)), data=prison.long))
+
+
+
+```

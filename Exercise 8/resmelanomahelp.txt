@@ -1,0 +1,10 @@
+resmelanoma.prn is a text file created for data in Table 3.1 in 
+Lee, E. T. and Wang, J. W. (2013): Statistical Methods for Survival Data Analysis}, 4th edition, Wiley. 
+Each row contains space-separated values of successive variables: ID, AGE, SEX, INI2,
+INI3A, INI3B, INI4A, TRT, RTIME, CRT, STIME and CST, where ID, patient id
+number; SEX=0 if female, =1 if male; INI2=1 if Initial Stage is 2, =0 otherwise;
+INI3A=1 if Initial Stage is 3A, =0 otherwise; INI3B=1 if Initial Stage is 3B, =0
+otherwise; INI4A=1 if Initial Stage is 4A, =0 otherwise; TRT=1 if Treatment
+recieved is 1, =0 if Treatment recieved is 2; RTIME, Remission Duration; CRT=0
+if Remission Duration is censored, =1 otherwise;  STIME, Survival time; CST=0 if
+Survival time is censored, =1 otherwise.
